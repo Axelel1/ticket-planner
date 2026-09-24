@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import clsx from "clsx";
-import StatusBadge from "@/app/ui/admin/status-badge";
+import StatusBadge from "@/app/ui/client/status-badge";
 
 const bookings = [
   { id: "BK-2291", date: "Sep 10, 2026", route: "Manila → Baguio", seats: "2A, 2B", departure: "6:00 AM", status: "on-time" as const },

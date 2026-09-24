@@ -1,5 +1,5 @@
 
-import CreateForm from '../create-form';
+import CreateForm from '@/app/ui/client/create-form';
 
 export default async function UsersPage() {
   return (

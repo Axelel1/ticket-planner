@@ -1,5 +1,5 @@
 import pool from "@/lib/db";
-import { users, routes, stops, vehicles, drivers, schedules } from "@/lib/placeholder-data";
+import { users, routes, stops, fares, vehicles, drivers, schedules } from "@/lib/placeholder-data";
 
 async function seedUsers() {
   await pool.query(`
@@ -25,20 +25,21 @@ async function seedRoutes() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS routes (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      code VARCHAR(50) NOT NULL,
+      code VARCHAR(50) NOT NULL UNIQUE,
       origin VARCHAR(100) NOT NULL,
       destination VARCHAR(100) NOT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-  // returns inserted route ids in placeholder-data order, for stops/schedules to reference
+
   const ids: number[] = [];
   for (const r of routes) {
-    const [result] = await pool.query(
-      `INSERT INTO routes (code, origin, destination) VALUES (?, ?, ?)`,
+    await pool.query(
+      `INSERT IGNORE INTO routes (code, origin, destination) VALUES (?, ?, ?)`,
       [r.code, r.origin, r.destination],
     );
-    ids.push((result as { insertId: number }).insertId);
+    const [rows] = await pool.query(`SELECT id FROM routes WHERE code = ?`, [r.code]);
+    ids.push((rows as { id: number }[])[0].id);
   }
   return ids;
 }
@@ -55,20 +56,29 @@ async function seedStops(routeIds: number[]) {
       zone VARCHAR(50),
       distance_km DECIMAL(6,2),
       travel_time_min INT,
+      UNIQUE KEY unique_route_sequence (route_id, sequence),
       FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE
     )
   `);
+
+  const ids: number[] = [];
   for (const s of stops) {
+    const routeId = routeIds[s.routeIndex];
     await pool.query(
-      `INSERT INTO stops (route_id, name, sequence, lat, lng, zone, distance_km, travel_time_min)
+      `INSERT IGNORE INTO stops (route_id, name, sequence, lat, lng, zone, distance_km, travel_time_min)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [routeIds[s.routeIndex], s.name, s.sequence, s.lat, s.lng, s.zone, s.distance_km, s.travel_time_min],
+      [routeId, s.name, s.sequence, s.lat, s.lng, s.zone, s.distance_km, s.travel_time_min],
     );
+    const [rows] = await pool.query(
+      `SELECT id FROM stops WHERE route_id = ? AND sequence = ?`,
+      [routeId, s.sequence],
+    );
+    ids.push((rows as { id: number }[])[0].id);
   }
+  return ids;
 }
 
-async function seedFares() {
-  // table only — no placeholder rows yet; fare matrix gets filled in from the route builder UI later
+async function seedFares(routeIds: number[], stopIds: number[]) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS fares (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,12 +86,21 @@ async function seedFares() {
       from_stop_id INT NOT NULL,
       to_stop_id INT NOT NULL,
       price DECIMAL(8,2) NOT NULL,
+      UNIQUE KEY unique_fare (route_id, from_stop_id, to_stop_id),
       FOREIGN KEY (route_id) REFERENCES routes(id) ON DELETE CASCADE,
       FOREIGN KEY (from_stop_id) REFERENCES stops(id) ON DELETE CASCADE,
       FOREIGN KEY (to_stop_id) REFERENCES stops(id) ON DELETE CASCADE
     )
   `);
+
+  for (const f of fares) {
+    await pool.query(
+      `INSERT IGNORE INTO fares (route_id, from_stop_id, to_stop_id, price) VALUES (?, ?, ?, ?)`,
+      [routeIds[0], stopIds[f.fromIndex], stopIds[f.toIndex], f.price],
+    );
+  }
 }
+
 async function seedVehicles() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS vehicles (
@@ -252,8 +271,8 @@ export async function seedDatabase() {
   await seedUsers();
 
   const routeIds = await seedRoutes();
-  await seedStops(routeIds);
-  await seedFares();
+  const stopIds = await seedStops(routeIds);
+  await seedFares(routeIds, stopIds);
 
   const vehicleIds = await seedVehicles();
   const driverIds = await seedDrivers();

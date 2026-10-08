@@ -55,4 +55,15 @@ const schedules = [
   },
 ];
 
-export { users, routes, stops, vehicles, drivers, schedules };
+  // fares reference stops by index into the `stops` array above (currently route 0 only)
+  const fares = [
+    { fromIndex: 0, toIndex: 1, price: 150 },
+    { fromIndex: 0, toIndex: 2, price: 280 },
+    { fromIndex: 0, toIndex: 3, price: 480 },
+    { fromIndex: 1, toIndex: 2, price: 180 },
+    { fromIndex: 1, toIndex: 3, price: 350 },
+    { fromIndex: 2, toIndex: 3, price: 150 },
+
+  ];
+
+export { users, routes, stops, fares, vehicles, drivers, schedules };

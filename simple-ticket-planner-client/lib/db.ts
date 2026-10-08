@@ -9,6 +9,7 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  dateStrings: true, // return DATE/DATETIME as 'YYYY-MM-DD' strings, not JS Date objects
 });
 
 export default pool;

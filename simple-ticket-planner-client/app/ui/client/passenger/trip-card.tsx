@@ -45,7 +45,7 @@ export default function TripCard({ trip }: { trip: Trip }) {
           </p>
         </div>
         <Link
-          href={soldOut ? "#" : `/book/${trip.id}`}
+          href={soldOut ? "#" : `/client/book/${trip.id}`}
           aria-disabled={soldOut}
           className={`rounded-md px-4 py-2 text-sm font-medium ${
             soldOut
